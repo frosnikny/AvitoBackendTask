@@ -1,26 +1,21 @@
-FROM golang:1.23-alpine AS builder
+FROM golang:1.23
 
-RUN apk add --update make git curl
+WORKDIR /app
 
-ARG MODULE_NAME=backend
+COPY go.mod go.sum ./
 
-COPY ../zadanie-6105 /home/${MODULE_NAME}/
+RUN go mod download
 
-WORKDIR /home/${MODULE_NAME}/
+COPY . .
 
-RUN go build -o main cmd/app/main.go
+WORKDIR /app/cmd/app
 
-RUN go build -o migrate cmd/migrate/new_models.go
+RUN go build -o go-server
 
-FROM alpine:latest as production
+WORKDIR /app/cmd/migrate
 
-ARG BUILDER_MODULE_NAME=backend
+RUN go build -o migrate
 
-WORKDIR /root/
+EXPOSE 8080
 
-COPY --from=builder /home/${BUILDER_MODULE_NAME}/main .
-COPY --from=builder /home/${BUILDER_MODULE_NAME}/migrate .
-
-RUN chown root:root main migrate
-
-CMD ["sh", "-c", "./migrate && ./main"]
+CMD ["sh", "-c", "./migrate && ./go-server"]
